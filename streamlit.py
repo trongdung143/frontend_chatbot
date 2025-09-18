@@ -78,8 +78,7 @@ if prompt := st.chat_input("enter ..."):
             client = sseclient.SSEClient(resp)
             st.session_state.start_time_global = time.time()
 
-    with st.spinner("responding ...")
-
+    with st.spinner("responding ..."):
         for event in client.events():
             if not event.data:
                 continue
