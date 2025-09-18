@@ -11,35 +11,17 @@ st.set_page_config(page_title="Chatbot", page_icon="", layout="wide")
 BACKEND_URL = "https://chatbot-e5xc.onrender.com/chat"
 
 agents = [
-    "analyst",
-    "assigner",
-    "calculator",
-    "coder",
-    "memory",
-    "planner",
-    "search",
-    "supervisor",
-    "tool",
-    "vision",
-    "writer",
+    "analyst","assigner","calculator","coder","memory",
+    "planner","search","supervisor","tool","vision","writer",
 ]
 
 agent_icons = {
-    "analyst": "📊",
-    "assigner": "📌",
-    "calculator": "🧮",
-    "coder": "💻",
-    "memory": "🧠",
-    "planner": "🗓️",
-    "search": "🔍",
-    "supervisor": "👨‍💼",
-    "tool": "🛠️",
-    "vision": "👁️",
-    "writer": "✍️",
+    "analyst": "📊","assigner": "📌","calculator": "🧮","coder": "💻",
+    "memory": "🧠","planner": "🗓️","search": "🔍","supervisor": "👨‍💼",
+    "tool": "🛠️","vision": "👁️","writer": "✍️",
 }
 
 sidebar_container = st.sidebar.empty()
-
 
 def render_sidebar():
     with sidebar_container.container():
@@ -50,11 +32,8 @@ def render_sidebar():
                 st.markdown(f"**{icon} {agent.capitalize()} ⏳**")
             else:
                 st.markdown(f"{icon} {agent.capitalize()}")
-
         st.markdown(f"{st.session_state.total_time:.2f}s")
-        st.session_state.total_time = 0.0
         st.divider()
-
 
 if "session_id" not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
@@ -67,15 +46,15 @@ if "start_time_global" not in st.session_state:
 if "total_time" not in st.session_state:
     st.session_state.total_time = 0.0
 
-
 today = str(datetime.date.today())
-if "last_reset" not in st.session_state or st.session_state.last_reset != today:
-    st.session_state.messages = []
-    st.session_state.total_time = 0.0
-    st.session_state.start_time_global = None
-    st.session_state.working_agent = None
-    st.session_state.last_reset = today
-
+if st.session_state.get("last_reset") != today:
+    st.session_state.update({
+        "messages": [],
+        "total_time": 0.0,
+        "start_time_global": None,
+        "working_agent": None,
+        "last_reset": today
+    })
 
 render_sidebar()
 
@@ -94,44 +73,38 @@ if prompt := st.chat_input("enter ..."):
 
         with st.spinner("thinking ..."):
             data = {"message": prompt}
-            cookies = (
-                {"session_id": st.session_state.session_id}
-                if st.session_state.session_id
-                else None
-            )
+            cookies = {"session_id": st.session_state.session_id}
             resp = requests.post(BACKEND_URL, data=data, cookies=cookies, stream=True)
             client = sseclient.SSEClient(resp)
-                st.session_state.start_time_global = time.time()
+            st.session_state.start_time_global = time.time()
+
         dynamic_spinner = st.empty()
         with dynamic_spinner:
-                st.spinner("responding ...")
-            for event in client.events():
-                if not event.data:
-                    continue
-                data = json.loads(event.data)
+            st.spinner("responding ...")
 
-                if data["type"] == "status":
-                    st.session_state.working_agent = data["agent"]
-                     dynamic_spinner.spinner(f"responding of {data['agent']} ...")
-                     render_sidebar()
+        for event in client.events():
+            if not event.data:
+                continue
+            data = json.loads(event.data)
 
-                elif data["type"] == "chunk":
-                    full_response += data["response"]
-                    placeholder.markdown(full_response)
+            if data["type"] == "status":
+                st.session_state.working_agent = data["agent"]
+                dynamic_spinner.spinner(f"Responding of {data['agent']} ...")
+                render_sidebar()
 
-                elif data["type"] == "done":
-                    if st.session_state.start_time_global:
-                        st.session_state.total_time = (
-                            time.time() - st.session_state.start_time_global
-                        )
-                    break
+            elif data["type"] == "chunk":
+                full_response += data["response"]
+                placeholder.markdown(full_response)
 
-                elif data["type"] == "error":
-                    placeholder.error(data["message"])
-                    break
+            elif data["type"] == "done":
+                if st.session_state.start_time_global:
+                    st.session_state.total_time = time.time() - st.session_state.start_time_global
+                break
+
+            elif data["type"] == "error":
+                placeholder.error(data["message"])
+                break
 
         st.session_state.working_agent = None
         render_sidebar()
-        st.session_state.messages.append(
-            {"role": "assistant", "content": full_response}
-        )
+        st.session_state.messages.append({"role": "assistant", "content": full_response})
