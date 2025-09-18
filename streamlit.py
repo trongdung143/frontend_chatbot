@@ -101,9 +101,10 @@ if prompt := st.chat_input("enter ..."):
             )
             resp = requests.post(BACKEND_URL, data=data, cookies=cookies, stream=True)
             client = sseclient.SSEClient(resp)
-            st.session_state.start_time_global = time.time()
-
-        with st.spinner("responding ..."):
+                st.session_state.start_time_global = time.time()
+        dynamic_spinner = st.empty()
+        with dynamic_spinner:
+                st.spinner("responding ...")
             for event in client.events():
                 if not event.data:
                     continue
@@ -111,7 +112,8 @@ if prompt := st.chat_input("enter ..."):
 
                 if data["type"] == "status":
                     st.session_state.working_agent = data["agent"]
-                    render_sidebar()
+                     dynamic_spinner.spinner(f"responding of {data['agent']} ...")
+                     render_sidebar()
 
                 elif data["type"] == "chunk":
                     full_response += data["response"]
