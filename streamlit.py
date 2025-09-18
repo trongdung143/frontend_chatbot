@@ -78,28 +78,28 @@ if prompt := st.chat_input("enter ..."):
             client = sseclient.SSEClient(resp)
             st.session_state.start_time_global = time.time()
 
-    with st.spinner("responding ..."):
-        for event in client.events():
-            if not event.data:
-                continue
-            data = json.loads(event.data)
+        with st.spinner("responding ..."):
+            for event in client.events():
+                if not event.data:
+                    continue
+                data = json.loads(event.data)
 
-            if data["type"] == "status":
-                st.session_state.working_agent = data["agent"]
-                render_sidebar()
+                if data["type"] == "status":
+                    st.session_state.working_agent = data["agent"]
+                    render_sidebar()
 
-            elif data["type"] == "chunk":
-                full_response += data["response"]
-                placeholder.markdown(full_response)
+                elif data["type"] == "chunk":
+                    full_response += data["response"]
+                    placeholder.markdown(full_response)
 
-            elif data["type"] == "done":
-                if st.session_state.start_time_global:
-                    st.session_state.total_time = time.time() - st.session_state.start_time_global
-                break
+                elif data["type"] == "done":
+                    if st.session_state.start_time_global:
+                        st.session_state.total_time = time.time() - st.session_state.start_time_global
+                    break
 
-            elif data["type"] == "error":
-                placeholder.error(data["message"])
-                break
+                elif data["type"] == "error":
+                    placeholder.error(data["message"])
+                    break
 
         st.session_state.working_agent = None
         render_sidebar()
