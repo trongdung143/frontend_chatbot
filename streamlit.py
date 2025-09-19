@@ -120,7 +120,11 @@ if prompt := st.chat_input("enter..."):
                         time.sleep(10e-4)
                         full_response += char
                         placeholder.markdown(full_response)
-
+            elif data.get("type") == "interrupt":
+                for char in data.get("response"):
+                    time.sleep(10e-4)
+                    full_response += char
+                    placeholder.markdown(full_response)
             elif data.get("type") == "done":
                 if st.session_state.get("start_time_global"):
                     st.session_state["total_time"] = time.time() - st.session_state.get(
@@ -129,9 +133,10 @@ if prompt := st.chat_input("enter..."):
                 break
 
         st.session_state["working_agent"] = None
+        render_sidebar()
         status_placeholder.markdown(f"*{st.session_state.get('total_time', 0.0):.2f}s*")
         st.session_state["total_time"] = 0.0
-        render_sidebar()
+
         st.session_state["messages"].append(
             {"role": "assistant", "content": full_response}
         )
