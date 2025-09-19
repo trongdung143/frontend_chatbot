@@ -8,7 +8,7 @@ import datetime
 
 st.set_page_config(page_title="Chatbot", page_icon="", layout="wide")
 
-BACKEND_URL = "https://chatbot-e5xc.onrender.com/chat"
+BACKEND_URL = "http://localhost:8080/chat"  # http://localhost:8080/
 
 agents = [
     "analyst",
@@ -47,11 +47,9 @@ def render_sidebar():
         for agent in agents:
             icon = agent_icons.get(agent, "🔹")
             if agent == working_agent:
-                st.markdown(f"**{icon} {agent.capitalize()} ⏳**")
+                st.markdown(f"**{agent.capitalize()}**")
             else:
-                st.markdown(f"{icon} {agent.capitalize()}")
-
-        st.divider()
+                st.markdown(f"{agent.capitalize()}")
 
 
 if "session_id" not in st.session_state:
@@ -65,15 +63,17 @@ if "start_time_global" not in st.session_state:
 if "total_time" not in st.session_state:
     st.session_state.total_time = 0.0
 
-
 today = str(datetime.date.today())
-if "last_reset" not in st.session_state or st.session_state.last_reset != today:
-    st.session_state.messages = []
-    st.session_state.total_time = 0.0
-    st.session_state.start_time_global = None
-    st.session_state.working_agent = None
-    st.session_state.last_reset = today
-
+if st.session_state.get("last_reset") != today:
+    st.session_state.update(
+        {
+            "messages": [],
+            "total_time": 0.0,
+            "start_time_global": None,
+            "working_agent": None,
+            "last_reset": today,
+        }
+    )
 
 render_sidebar()
 
@@ -90,19 +90,15 @@ if prompt := st.chat_input("enter..."):
         placeholder = st.empty()
         full_response = ""
 
-        with st.spinner("**thinking...**"):
+        with st.spinner("*Thinking*"):
             data = {"message": prompt}
-            cookies = (
-                {"session_id": st.session_state.session_id}
-                if st.session_state.session_id
-                else None
-            )
+            cookies = {"conversation_id": st.session_state.session_id}
             resp = requests.post(BACKEND_URL, data=data, cookies=cookies, stream=True)
             client = sseclient.SSEClient(resp)
             st.session_state.start_time_global = time.time()
 
         status_placeholder = st.empty()
-        status_placeholder.markdown("**responding...**")
+        status_placeholder.markdown("*Responding*")
         for event in client.events():
             if not event.data:
                 continue
@@ -111,11 +107,13 @@ if prompt := st.chat_input("enter..."):
             if data["type"] == "status":
                 st.session_state.working_agent = data["agent"]
                 render_sidebar()
-                status_placeholder.markdown(f"**responding of {data['agent']}...**")
+                status_placeholder.markdown(f"*Responding of {data['agent']}...*")
 
             elif data["type"] == "chunk":
-                full_response += data["response"]
-                placeholder.markdown(full_response)
+                for char in data["response"]:
+                    time.sleep(10e-4)
+                    full_response += char
+                    placeholder.markdown(full_response)
 
             elif data["type"] == "done":
                 if st.session_state.start_time_global:
