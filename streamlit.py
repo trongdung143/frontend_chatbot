@@ -51,8 +51,6 @@ def render_sidebar():
             else:
                 st.markdown(f"{icon} {agent.capitalize()}")
 
-        st.markdown(f"{st.session_state.total_time:.2f}s")
-        st.session_state.total_time = 0.0
         st.divider()
 
 
@@ -83,7 +81,7 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-if prompt := st.chat_input("enter ..."):
+if prompt := st.chat_input("enter..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
@@ -92,7 +90,7 @@ if prompt := st.chat_input("enter ..."):
         placeholder = st.empty()
         full_response = ""
 
-        with st.spinner("thinking ..."):
+        with st.spinner("**thinking...**"):
             data = {"message": prompt}
             cookies = (
                 {"session_id": st.session_state.session_id}
@@ -103,32 +101,32 @@ if prompt := st.chat_input("enter ..."):
             client = sseclient.SSEClient(resp)
             st.session_state.start_time_global = time.time()
 
-        with st.spinner("responding ..."):
-            for event in client.events():
-                if not event.data:
-                    continue
-                data = json.loads(event.data)
+        status_placeholder = st.empty()
+        status_placeholder.markdown("**responding...**")
+        for event in client.events():
+            if not event.data:
+                continue
+            data = json.loads(event.data)
 
-                if data["type"] == "status":
-                    st.session_state.working_agent = data["agent"]
-                    render_sidebar()
+            if data["type"] == "status":
+                st.session_state.working_agent = data["agent"]
+                render_sidebar()
+                status_placeholder.markdown(f"**responding of {data['agent']}...**")
 
-                elif data["type"] == "chunk":
-                    full_response += data["response"]
-                    placeholder.markdown(full_response)
+            elif data["type"] == "chunk":
+                full_response += data["response"]
+                placeholder.markdown(full_response)
 
-                elif data["type"] == "done":
-                    if st.session_state.start_time_global:
-                        st.session_state.total_time = (
-                            time.time() - st.session_state.start_time_global
-                        )
-                    break
-
-                elif data["type"] == "error":
-                    placeholder.error(data["message"])
-                    break
+            elif data["type"] == "done":
+                if st.session_state.start_time_global:
+                    st.session_state.total_time = (
+                        time.time() - st.session_state.start_time_global
+                    )
+                break
 
         st.session_state.working_agent = None
+        status_placeholder.markdown(f"*{st.session_state.total_time:.2f}s*")
+        st.session_state.total_time = 0.0
         render_sidebar()
         st.session_state.messages.append(
             {"role": "assistant", "content": full_response}
