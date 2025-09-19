@@ -8,7 +8,7 @@ import datetime
 
 st.set_page_config(page_title="Chatbot", page_icon="", layout="wide")
 
-BACKEND_URL = "http://localhost:8080/chat"  # http://localhost:8080/
+BACKEND_URL = "https://chatbot-e5xc.onrender.com/chat"  # http://localhost:8080/
 
 agents = [
     "analyst",
