@@ -17,7 +17,7 @@ hide_streamlit_style = """
     </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
-BACKEND_URL = "http://localhost:8080/chat"  # http://localhost:8080/-https://chatbot-e5xc.onrender.com/
+BACKEND_URL = "https://chatbot-e5xc.onrender.com/chat"  # http://localhost:8080/-https://chatbot-e5xc.onrender.com/
 
 agents = [
     "analyst",
