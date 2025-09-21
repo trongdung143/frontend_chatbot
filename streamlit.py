@@ -18,7 +18,8 @@ hide_streamlit_style = """
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 BACKEND_URL = "https://chatbot-e5xc.onrender.com/chat"  # http://localhost:8080/-https://chatbot-e5xc.onrender.com/
-
+if "uploader_key" not in st.session_state:
+    st.session_state.uploader_key = 0
 agents = [
     "analyst",
     "assigner",
@@ -31,6 +32,7 @@ agents = [
     "tool",
     "vision",
     "writer",
+    "emotive",
 ]
 
 agent_icons = {
@@ -45,6 +47,7 @@ agent_icons = {
     "tool": "🛠️",
     "vision": "👁️",
     "writer": "✍️",
+    "emotive": "😊",
 }
 
 sidebar_container = st.sidebar.empty()
@@ -89,6 +92,13 @@ for msg in st.session_state.get("messages", []):
     with st.chat_message(msg.get("role", "assistant")):
         st.markdown(msg.get("content", ""))
 
+
+uploaded_file = st.file_uploader(
+    "file upload",
+    type=["pdf", "docx"],
+    accept_multiple_files=False,
+    key=f"uploader_{st.session_state.uploader_key}",
+)
 if prompt := st.chat_input("enter..."):
     st.session_state["messages"].append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -101,7 +111,28 @@ if prompt := st.chat_input("enter..."):
         with st.spinner("**Thinking**"):
             data = {"message": prompt}
             cookies = {"conversation_id": st.session_state.get("session_id")}
-            resp = requests.post(BACKEND_URL, data=data, cookies=cookies, stream=True)
+            if not uploaded_file:
+                resp = requests.post(
+                    BACKEND_URL,
+                    data=data,
+                    cookies=cookies,
+                    stream=True,
+                )
+            else:
+                resp = requests.post(
+                    BACKEND_URL,
+                    data=data,
+                    files={
+                        "file": (
+                            uploaded_file.name,
+                            uploaded_file,
+                            uploaded_file.type,
+                        )
+                    },
+                    cookies=cookies,
+                    stream=True,
+                )
+                st.session_state.uploader_key += 1
             client = sseclient.SSEClient(resp)
             st.session_state["start_time_global"] = time.time()
 
@@ -112,19 +143,31 @@ if prompt := st.chat_input("enter..."):
                 continue
             data = json.loads(event.data)
             if data.get("type") == "chunk":
-                status_placeholder.markdown(f"**Responding of {data.get("agent")}**")
-                st.session_state["working_agent"] = data.get("agent")
-                render_sidebar()
-                if data.get("agent") not in ["memory", "supervisor", "assigner"]:
+                status_placeholder.markdown(f"**{data.get("agent").capitalize()}**")
+                if data.get("agent") in agents:
+                    st.session_state["working_agent"] = data.get("agent")
+                    render_sidebar()
+                if data.get("agent") in [
+                    "analyst",
+                    "calculator",
+                    "coder",
+                    "planner",
+                    "search",
+                    "tool",
+                    "vision",
+                    "writer",
+                    "emotive",
+                ]:
                     for char in data.get("response"):
                         time.sleep(10e-4)
                         full_response += char
                         placeholder.markdown(full_response)
             elif data.get("type") == "interrupt":
-                for char in data.get("response"):
-                    time.sleep(10e-4)
-                    full_response += char
-                    placeholder.markdown(full_response)
+                if st.session_state.get("start_time_global"):
+                    st.session_state["total_time"] = time.time() - st.session_state.get(
+                        "start_time_global"
+                    )
+                break
             elif data.get("type") == "done":
                 if st.session_state.get("start_time_global"):
                     st.session_state["total_time"] = time.time() - st.session_state.get(
@@ -136,7 +179,6 @@ if prompt := st.chat_input("enter..."):
         render_sidebar()
         status_placeholder.markdown(f"*{st.session_state.get('total_time', 0.0):.2f}s*")
         st.session_state["total_time"] = 0.0
-
         st.session_state["messages"].append(
             {"role": "assistant", "content": full_response}
         )
