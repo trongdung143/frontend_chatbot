@@ -33,6 +33,8 @@ agents = [
     "vision",
     "writer",
     "emotive",
+    "simple",
+    "rag",
 ]
 
 agent_icons = {
@@ -48,6 +50,8 @@ agent_icons = {
     "vision": "👁️",
     "writer": "✍️",
     "emotive": "😊",
+    "simple": "✍️",
+    "rag": "👁️",
 }
 
 sidebar_container = st.sidebar.empty()
@@ -148,13 +152,6 @@ if prompt := st.chat_input("enter..."):
                     st.session_state["working_agent"] = data.get("agent")
                     render_sidebar()
                 if data.get("agent") in [
-                    "analyst",
-                    "calculator",
-                    "coder",
-                    "planner",
-                    "search",
-                    "tool",
-                    "vision",
                     "writer",
                     "emotive",
                 ]:
@@ -163,6 +160,10 @@ if prompt := st.chat_input("enter..."):
                         full_response += char
                         placeholder.markdown(full_response)
             elif data.get("type") == "interrupt":
+                for char in data.get("response"):
+                    time.sleep(10e-4)
+                    full_response += char
+                    placeholder.markdown(full_response)
                 if st.session_state.get("start_time_global"):
                     st.session_state["total_time"] = time.time() - st.session_state.get(
                         "start_time_global"
